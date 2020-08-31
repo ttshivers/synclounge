@@ -14,7 +14,7 @@
     "build": "vue-cli-service build --modern",
     "lint": "vue-cli-service lint",
     "lint:style": "vue-cli-service lint:style",
-    "prepare": "npm run build"
+    "prepare": "if-env SKIP_BUILD=true && echo 'Skipping build' || npm run build"
   },
   "dependencies": {
     "nconf": "^0.10.0",
@@ -25,6 +25,7 @@
     "@babel/plugin-proposal-optional-chaining": "^7.11.0",
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^9.1.2",
+    "@delucis/if-env": "^1.1.2",
     "@samhammer/vue-cli-plugin-stylelint": "^2.0.0",
     "@vue/cli-plugin-babel": "^4.5.4",
     "@vue/cli-plugin-eslint": "^4.5.4",
