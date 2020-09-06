@@ -8,6 +8,8 @@ import mutations from './mutations';
 import getters from './getters';
 import modules from './modules';
 
+import extension from './plugins/extension';
+
 Vue.use(Vuex);
 
 const persistedState = createPersistedState({
@@ -47,6 +49,7 @@ const store = new Vuex.Store({
   modules,
   plugins: [
     persistedState,
+    extension,
   ],
 });
 
