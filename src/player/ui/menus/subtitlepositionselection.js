@@ -18,7 +18,7 @@ export default (store) => {
         ),
 
         store.watch(
-          (state, getters) => getters['slplayer/GET_SUBTITLE_POSITION'],
+          (state) => state.slplayer.subtitlePosition,
           this.updateSubtitlePositionSelection.bind(this),
         ),
       ];
@@ -74,7 +74,7 @@ export default (store) => {
           () => SubtitlePositionSelection.onSubtitlePositionClicked(position),
         );
 
-        if (position === store.getters['slplayer/GET_SUBTITLE_POSITION']) {
+        if (position === store.state.slplayer.subtitlePosition) {
           button.setAttribute('aria-selected', 'true');
           button.appendChild(checkmarkIcon());
           span.classList.add('shaka-chosen-item');

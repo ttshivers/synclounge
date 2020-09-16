@@ -1,43 +1,50 @@
-import {
-  getPlayer, setPlayer, getOverlay, setOverlay,
-} from './state';
+import { getOverlay, setOverlay } from './state';
+
+const getControlsOptional = () => getOverlay()?.getControls();
+// const getPlayerOptional = () => getControlsOptional()?.getPlayer();
+export const getVideoOptional = () => getControlsOptional()?.getVideo();
+
+const getControls = () => getOverlay().getControls();
+const getControlsContainer = () => getControls().getControlsContainer();
+export const getPlayer = () => getControls().getPlayer();
+export const getVideo = () => getControls().getVideo();
 
 // eslint-disable-next-line no-underscore-dangle
-export const areControlsShown = () => !getOverlay() || (getOverlay()?.getControls().enabled_
-    && (getOverlay()?.getControls().getControlsContainer().getAttribute('shown') != null
-    || getOverlay()?.getControls().getControlsContainer().getAttribute('casting') != null));
+export const areControlsShown = () => !getOverlay() || (getControls().enabled_
+    && (getControlsContainer().getAttribute('shown') != null
+    || getControlsContainer().getAttribute('casting') != null));
 
 export const getControlsOffset = (fallbackHeight) => (areControlsShown()
-  ? (getPlayer()?.getMediaElement()?.offsetHeight || fallbackHeight) * 0.025 + 48 || 0
+  ? (getVideoOptional()?.offsetHeight || fallbackHeight) * 0.025 + 48 || 0
   : 0);
 
-export const isPaused = () => getPlayer()?.getMediaElement()?.paused;
+export const isPaused = () => getVideo().paused;
 
 export const isPresentationPaused = () => isPaused()
-  && !getOverlay().getControls().isSeeking();
+  && !getControls().isSeeking();
 
-export const isBuffering = () => getPlayer()?.isBuffering();
+export const isBuffering = () => getPlayer().isBuffering();
 
 export const isPlaying = () => !isPaused() && !isBuffering();
 
-export const getCurrentTime = () => getPlayer()?.getMediaElement().currentTime;
+export const getCurrentTime = () => getVideo().currentTime;
 
-export const getCurrentTimeMs = () => getPlayer()?.getMediaElement()
+export const getCurrentTimeMs = () => getVideo()
   .currentTime * 1000;
 
-export const getDurationMs = () => getPlayer().getMediaElement().duration * 1000;
+export const getDurationMs = () => getVideo().duration * 1000;
 
-export const getVolume = () => getPlayer().getMediaElement().volume;
+export const getVolume = () => getVideo().volume;
 
 export const setVolume = (volume) => {
-  getPlayer().getMediaElement().volume = volume;
+  getVideo().volume = volume;
 };
 
-export const play = () => getPlayer().getMediaElement().play();
-export const pause = () => getPlayer().getMediaElement().pause();
+export const play = () => getVideo().play();
+export const pause = () => getVideo().pause();
 
 export const isTimeInBufferedRange = (timeMs) => {
-  const bufferedTimeRange = getPlayer().getMediaElement().buffered;
+  const bufferedTimeRange = getVideo().buffered;
 
   // There can be multiple ranges
   for (let i = 0; i < bufferedTimeRange.length; i += 1) {
@@ -49,17 +56,9 @@ export const isTimeInBufferedRange = (timeMs) => {
   return false;
 };
 
-export const isMediaElementAttached = () => getPlayer()?.getMediaElement != null;
+const addMediaElementEventListener = (...args) => getVideo().addEventListener(...args);
 
-export const addEventListener = (...args) => getPlayer().addEventListener(...args);
-
-export const removeEventListener = (...args) => getPlayer().removeEventListener(...args);
-
-const addMediaElementEventListener = (...args) => getPlayer().getMediaElement()
-  .addEventListener(...args);
-
-const removeMediaElementEventListener = (...args) => getPlayer().getMediaElement()
-  .removeEventListener(...args);
+const removeMediaElementEventListener = (...args) => getVideo().removeEventListener(...args);
 
 // TODO: potentialy make cancellable
 export const waitForMediaElementEvent = ({ signal, type }) => new Promise((resolve, reject) => {
@@ -80,23 +79,23 @@ export const unload = (...args) => getPlayer().unload(...args);
 export const getPlaybackRate = () => getPlayer().getPlaybackRate();
 
 export const setPlaybackRate = (rate) => {
-  getPlayer().getMediaElement().playbackRate = rate;
+  getVideo().playbackRate = rate;
 };
 
 export const setCurrentTimeMs = (timeMs) => {
-  getPlayer().getMediaElement().currentTime = timeMs / 1000;
+  getVideo().currentTime = timeMs / 1000;
 };
 
-export const getSmallPlayButton = () => getOverlay().getControls().getControlsContainer()
+export const getSmallPlayButton = () => getControlsContainer()
   .getElementsByClassName('shaka-small-play-button')[0];
 
-export const getBigPlayButton = () => getOverlay().getControls().getControlsContainer()
+export const getBigPlayButton = () => getControlsContainer()
   .getElementsByClassName('shaka-play-button')[0];
 
 export const getDimensions = () => {
   const {
     videoWidth, videoHeight, offsetWidth, offsetHeight,
-  } = getPlayer().getMediaElement();
+  } = getVideo();
 
   return {
     videoWidth, videoHeight, offsetWidth, offsetHeight,
@@ -104,19 +103,16 @@ export const getDimensions = () => {
 };
 
 export const insertElementBeforeVideo = (element) => {
-  const parent = getPlayer().getMediaElement().parentNode;
+  const { parentNode } = getVideo();
 
-  parent.insertBefore(
+  parentNode.insertBefore(
     element,
-    getPlayer().getMediaElement(),
+    getVideo(),
   );
 };
 
-export const getMediaElement = () => getPlayer().getMediaElement();
-
 export const destroy = async () => {
   const savedOverlay = getOverlay();
-  setPlayer(null);
   setOverlay(null);
   await savedOverlay.destroy();
 };

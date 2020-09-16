@@ -14,6 +14,8 @@
 import { mapMutations, mapState } from 'vuex';
 
 export default {
+  name: 'TheSidebarRightButton',
+
   computed: {
     ...mapState(['isRightSidebarOpen']),
   },

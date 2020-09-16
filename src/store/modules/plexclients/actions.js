@@ -67,7 +67,7 @@ export default {
   },
 
   PLAY_MEDIA: async ({
-    getters, commit, dispatch, rootGetters,
+    getters, commit, dispatch, rootGetters, rootState,
   }, {
     mediaIndex, offset, metadata, machineIdentifier, userInitiated,
   }) => {
@@ -91,10 +91,10 @@ export default {
       commit('slplayer/SET_MASK_PLAYER_STATE', true, { root: true });
       await dispatch('synclounge/PROCESS_MEDIA_UPDATE', userInitiated, { root: true });
 
-      if (rootGetters['slplayer/IS_PLAYER_INITIALIZED']) {
+      if (rootState.slplayer.isPlayerInitialized) {
         await dispatch('slplayer/CHANGE_PLAYER_SRC', true, { root: true });
       } else {
-        await dispatch('slplayer/NAVIGATE_AND_INITIALIZE_PLAYER', null, { root: true });
+        commit('slplayer/SET_SHOW_PLAYER', true, { root: true });
       }
     } else {
       // Play a media item given a mediaId key and a server to play from
@@ -504,11 +504,11 @@ export default {
     };
   },
 
-  PLAY_NEXT: ({ getters, rootGetters, dispatch }, metadata) => {
+  PLAY_NEXT: ({ getters, rootState, dispatch }, metadata) => {
     console.debug('plexclients/PLAY_NEXT');
     switch (getters.GET_CHOSEN_CLIENT_ID) {
       case slPlayerClientId: {
-        if (rootGetters['slplayer/IS_PLAYER_INITIALIZED']) {
+        if (rootState.slplayer.isPlayerInitialized) {
           return dispatch('slplayer/PLAY_NEXT', null, { root: true });
         }
 

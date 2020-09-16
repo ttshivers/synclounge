@@ -96,11 +96,9 @@
       </template>
     </v-app-bar>
 
-    <v-main
-      class="main-content"
-      app
-    >
+    <v-main app>
       <v-container
+        v-if="!showPlayer || !isPlayerExpanded"
         align="start"
         class="pa-0"
         fluid
@@ -116,8 +114,12 @@
             class="overflow-y-auto pa-3"
             :height="bgHeight"
           >
+            <template v-if="GET_CONFIG">
+              <router-view />
+            </template>
+
             <v-container
-              v-if="!GET_CONFIG"
+              v-else
               fill-height
             >
               <v-row
@@ -135,8 +137,6 @@
               </v-row>
             </v-container>
 
-            <router-view v-else />
-
             <v-snackbar
               :value="GET_SNACKBAR_OPEN"
               :color="GET_SNACKBAR_MESSAGE.color"
@@ -152,6 +152,9 @@
           </v-sheet>
         </v-img>
       </v-container>
+
+      <TheVideoPlayerContainer v-if="showPlayer" />
+      <TheVideoPlayerFooter v-if="shouldShowFooter" />
     </v-main>
   </v-app>
 </template>
@@ -159,7 +162,9 @@
 <script>
 import './assets/css/style.css';
 
-import { mapActions, mapGetters, mapMutations } from 'vuex';
+import {
+  mapActions, mapGetters, mapMutations, mapState,
+} from 'vuex';
 import redirection from '@/mixins/redirection';
 import clipboard from '@/mixins/clipboard';
 import linkWithRoom from '@/mixins/linkwithroom';
@@ -172,6 +177,8 @@ export default {
     TheNowPlayingChip: () => import('@/components/TheNowPlayingChip.vue'),
     DonateDialog: () => import('@/components/DonateDialog.vue'),
     TheAppBarCrumbs: () => import('@/components/TheAppBarCrumbs.vue'),
+    TheVideoPlayerContainer: () => import('@/components/TheVideoPlayerContainer.vue'),
+    TheVideoPlayerFooter: () => import('@/components/TheVideoPlayerFooter.vue'),
   },
 
   mixins: [
@@ -192,7 +199,6 @@ export default {
       'GET_SNACKBAR_MESSAGE',
       'GET_SNACKBAR_OPEN',
       'GET_BACKGROUND',
-      'GET_NAVIGATE_TO_PLAYER',
       'GET_REPOSITORY_URL',
       'GET_DISCORD_URL',
       'GET_NAVIGATE_HOME',
@@ -220,6 +226,11 @@ export default {
       'GET_PASSWORD',
     ]),
 
+    ...mapState('slplayer', [
+      'showPlayer',
+      'isPlayerExpanded',
+    ]),
+
     links() {
       return [
         {
@@ -240,7 +251,7 @@ export default {
     },
 
     showAppBarExtension() {
-      return this.$route.meta.showAppBarExtension;
+      return this.$route.meta.showAppBarExtension && !this.isPlayerExpanded;
     },
 
     smallLogoMedia() {
@@ -253,8 +264,13 @@ export default {
         : 'transparent';
     },
 
+    shouldShowFooter() {
+      return this.showPlayer && !this.isPlayerExpanded;
+    },
+
     bgHeight() {
-      return this.$vuetify.breakpoint.height - this.$vuetify.application.top;
+      return this.$vuetify.breakpoint.height - this.$vuetify.application.top
+      - this.shouldShowFooter * 100;
     },
 
     inviteUrl() {
@@ -288,13 +304,6 @@ export default {
         } else {
           this.$router.push(this.linkWithRoom({ name: 'PlexHome' }));
         }
-      }
-    },
-
-    GET_NAVIGATE_TO_PLAYER(navigate) {
-      if (navigate) {
-        this.$router.push(this.linkWithRoom({ name: 'WebPlayer' }));
-        this.SET_NAVIGATE_TO_PLAYER(false);
       }
     },
 
@@ -352,7 +361,6 @@ export default {
 
     ...mapMutations([
       'SET_SNACKBAR_OPEN',
-      'SET_NAVIGATE_TO_PLAYER',
       'SET_NAVIGATE_HOME',
       'SET_LEFT_SIDEBAR_OPEN',
     ]),

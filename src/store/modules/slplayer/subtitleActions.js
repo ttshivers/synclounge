@@ -1,7 +1,7 @@
 import { makeUrl } from '@/utils/fetchutils';
 import {
   getControlsOffset, isPaused, getPlaybackRate, getCurrentTimeMs, getDimensions,
-  insertElementBeforeVideo, getMediaElement, getCurrentTime,
+  insertElementBeforeVideo, getCurrentTime, getVideo,
 } from '@/player';
 import resiliantStreamFactory from '@/utils/streams';
 import { hexToLibjassColor, subtitleSettings, getBestOutlineColor } from '@/utils/subtitleutils';
@@ -24,9 +24,12 @@ const handleStreamError = async (assPromise) => {
 };
 
 export default {
-  CACHE_ORIGINAL_SUBTITLE_RESOLUTION: ({ getters, commit }) => {
-    if (!getters.GET_ORIGINAL_SUBTITLE_RESOLUTION_X_CACHE
-      || !getters.GET_ORIGINAL_SUBTITLE_RESOLUTION_Y_CACHE) {
+  CACHE_ORIGINAL_SUBTITLE_RESOLUTION: ({
+    state: { originalSubtitleResolutionXCache, originalSubtitleResolutionYCache },
+    commit,
+  }) => {
+    if (!originalSubtitleResolutionXCache
+      || !originalSubtitleResolutionYCache) {
       commit('SET_ORIGINAL_SUBTITLE_RESOLUTION_X_CACHE',
         subtitleRenderer.ass.properties.resolutionX);
 
@@ -55,14 +58,14 @@ export default {
     }
   },
 
-  GET_OR_MAKE_VIDEO_CLOCK: async ({ getters, dispatch }) => {
+  GET_OR_MAKE_VIDEO_CLOCK: async ({ state: { subtitleOffset }, dispatch }) => {
     const libjass = await import('synclounge-libjass');
 
     if (!videoClock) {
       videoClock = new VideoClock(
-        getMediaElement(),
+        getVideo(),
         new libjass.renderers.AutoClock(() => Math.max(getCurrentTime()
-          + (getters.GET_SUBTITLE_OFFSET / 1000), 0), 100),
+          + (subtitleOffset / 1000), 0), 100),
 
       );
     }
@@ -72,18 +75,18 @@ export default {
     return videoClock;
   },
 
-  PUBLISH_SUBTITLE_POSITION: ({ getters }) => {
+  PUBLISH_SUBTITLE_POSITION: ({ state: { subtitlePosition } }) => {
     console.debug('PUBLISH_SUBTITLE_POSITION');
     // eslint-disable-next-line no-underscore-dangle
-    subtitleRenderer.ass.styles.get('Default')._alignment = getters.GET_SUBTITLE_POSITION;
+    subtitleRenderer.ass.styles.get('Default')._alignment = subtitlePosition;
   },
 
-  PUBLISH_SUBTITLE_COLOR: async ({ getters }) => {
+  PUBLISH_SUBTITLE_COLOR: async ({ state: { subtitleColor } }) => {
     console.debug('PUBLISH_SUBTITLE_COLOR');
 
     const defaultStyle = subtitleRenderer.ass.styles.get('Default');
     // eslint-disable-next-line no-underscore-dangle
-    defaultStyle._primaryColor = await hexToLibjassColor(getters.GET_SUBTITLE_COLOR);
+    defaultStyle._primaryColor = await hexToLibjassColor(subtitleColor);
 
     // eslint-disable-next-line no-underscore-dangle
     defaultStyle._outlineColor = await hexToLibjassColor(
@@ -92,18 +95,19 @@ export default {
     );
   },
 
-  PUBLISH_SUBTITLE_SIZE: async ({ getters, dispatch }) => {
+  PUBLISH_SUBTITLE_SIZE: async ({
+    state: { subtitleSize, originalSubtitleResolutionXCache, originalSubtitleResolutionYCache },
+    dispatch,
+  }) => {
     console.debug('PUBLISH_SUBTITLE_SIZE');
 
     await dispatch('CACHE_ORIGINAL_SUBTITLE_RESOLUTION');
 
     const assProperties = subtitleRenderer.ass.properties;
 
-    assProperties.resolutionX = getters.GET_ORIGINAL_SUBTITLE_RESOLUTION_X_CACHE
-      / getters.GET_SUBTITLE_SIZE;
+    assProperties.resolutionX = originalSubtitleResolutionXCache / subtitleSize;
 
-    assProperties.resolutionY = getters.GET_ORIGINAL_SUBTITLE_RESOLUTION_Y_CACHE
-      / getters.GET_SUBTITLE_SIZE;
+    assProperties.resolutionY = originalSubtitleResolutionYCache / subtitleSize;
   },
 
   RERENDER_SUBTITLE_CONTAINER: async ({ dispatch }) => {
@@ -255,14 +259,14 @@ export default {
   },
 
   CHANGE_SUBTITLE_OFFSET: async ({
-    getters, rootGetters, commit, dispatch,
+    state: { subtitleOffset }, getters, rootGetters, commit, dispatch,
   }, offsetIncrement) => {
     console.debug('CHANGE_SUBTITLE_OFFSET', offsetIncrement);
     if (offsetIncrement === 0) {
       // Reset
       commit('SET_SUBTITLE_OFFSET', 0);
     } else {
-      commit('SET_SUBTITLE_OFFSET', getters.GET_SUBTITLE_OFFSET + offsetIncrement);
+      commit('SET_SUBTITLE_OFFSET', subtitleOffset + offsetIncrement);
     }
 
     // eslint-disable-next-line no-underscore-dangle
@@ -272,7 +276,7 @@ export default {
     await dispatch('plexservers/UPDATE_STREAM', {
       machineIdentifier: rootGetters['plexclients/GET_ACTIVE_SERVER_ID'],
       id: getters.GET_SUBTITLE_STREAM.id,
-      offset: getters.GET_SUBTITLE_OFFSET,
+      offset: subtitleOffset,
     }, { root: true });
   },
 };

@@ -21,7 +21,7 @@ export default (store) => {
         ),
 
         store.watch(
-          (state, getters) => getters['slplayer/GET_SUBTITLE_OFFSET'],
+          (state) => state.slplayer.subtitleOffset,
           this.updateSubtitleOffset.bind(this),
         ),
       ];
@@ -35,7 +35,7 @@ export default (store) => {
     }
 
     updateSubtitleOffset() {
-      const offsetLabel = `${store.getters['slplayer/GET_SUBTITLE_OFFSET']}ms`;
+      const offsetLabel = `${store.state.slplayer.subtitleOffset}ms`;
       this.currentSelection.textContent = offsetLabel;
       this.backSpan.textContent = `Subtitle Offset: ${offsetLabel}`;
       this.nameSpan.textContent = 'Subtitle Offset';

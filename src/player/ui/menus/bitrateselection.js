@@ -2,6 +2,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 import {
   setDisplay, getDescendantIfExists, removeAllChildren, focusOnTheChosenItem, checkmarkIcon,
 } from '@/player/ui/utils';
+import qualities from '@/utils/qualities';
 
 export default (store) => {
   class BitrateSelection extends shaka.ui.SettingsMenu {
@@ -11,11 +12,6 @@ export default (store) => {
       super(parent, controls, 'settings');
 
       this.#watcherCancellers = [
-        store.watch(
-          (state, getters) => getters['slplayer/GET_QUALITIES'],
-          this.updateBitrateSelection.bind(this),
-        ),
-
         store.watch(
           (state, getters) => getters['settings/GET_SLPLAYERQUALITY'],
           this.updateBitrateSelection.bind(this),
@@ -33,7 +29,7 @@ export default (store) => {
 
     updateBitrateSelection() {
       // Hide menu if no bitrates
-      if (store.getters['slplayer/GET_QUALITIES'].length <= 0) {
+      if (qualities.length <= 0) {
         setDisplay(this.menu, false);
         setDisplay(this.button, false);
         return;
@@ -58,7 +54,7 @@ export default (store) => {
     }
 
     addBitrateSelection() {
-      store.getters['slplayer/GET_QUALITIES'].forEach((bitrateOption) => {
+      qualities.forEach((bitrateOption) => {
         const button = document.createElement('button');
         button.classList.add('explicit-bitrate');
 

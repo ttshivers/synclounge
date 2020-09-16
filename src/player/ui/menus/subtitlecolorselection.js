@@ -18,7 +18,7 @@ export default (store) => {
         ),
 
         store.watch(
-          (state, getters) => getters['slplayer/GET_SUBTITLE_COLOR'],
+          (state) => state.slplayer.subtitleColor,
           this.updateSubtitleColorSelection.bind(this),
         ),
       ];
@@ -74,7 +74,7 @@ export default (store) => {
           () => SubtitleColorSelection.onSubtitleColorClicked(color),
         );
 
-        if (color === store.getters['slplayer/GET_SUBTITLE_COLOR']) {
+        if (color === store.state.slplayer.subtitleColor) {
           button.setAttribute('aria-selected', 'true');
           button.appendChild(checkmarkIcon());
           span.classList.add('shaka-chosen-item');

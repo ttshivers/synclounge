@@ -67,20 +67,6 @@ export default new Router({
     },
 
     {
-      path: '/room/:room/player/:server?',
-      name: 'WebPlayer',
-      components: {
-        default: () => import('@/views/WebPlayer.vue'),
-        rightSidebar,
-        rightSidebarButton,
-      },
-      meta: {
-        requiresAuth: true,
-        protected: true,
-      },
-    },
-
-    {
       path: '/room/:room/browse/:server?',
       name: 'PlexHome',
       components: {

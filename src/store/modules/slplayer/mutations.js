@@ -25,32 +25,6 @@ export default {
     state.plexDecision = decision;
   },
 
-  // DOM attributes aren't reactive so you have to update this periodically
-  UPDATE_PLAYER_CONTROLS_SHOWN: (state, shown) => {
-    state.playerControlsShown = shown;
-  },
-
-  SET_PLAYER_CONTROLS_SHOWN_INTERVAL: (state, interval) => {
-    state.playerControlsShownInterval = interval;
-  },
-
-  STOP_UPDATE_PLAYER_CONTROLS_SHOWN_INTERVAL: (state) => {
-    clearInterval(state.playerControlsShownInterval);
-    state.playerControlsShownInterval = null;
-  },
-
-  SET_BUFFERING_EVENT_LISTENER: (state, listener) => {
-    state.bufferingEventListener = listener;
-  },
-
-  SET_CLICK_EVENT_LISTENER: (state, listener) => {
-    state.clickEventListener = listener;
-  },
-
-  SET_ERROR_EVENT_LISTENER: (state, listener) => {
-    state.errorEventListener = listener;
-  },
-
   SET_PLEX_TIMELINE_UPDATER_CANCEL_TOKEN: (state, token) => {
     state.plexTimelineUpdaterCancelToken = token;
   },
@@ -61,10 +35,6 @@ export default {
 
   SET_IS_PLAYER_INITIALIZED: (state, isInitialized) => {
     state.isPlayerInitialized = isInitialized;
-  },
-
-  SET_PLAYER_INITIALIZED_DEFERRED_PROMISE: (state, deferred) => {
-    state.playerInitializedDeferredPromise = deferred;
   },
 
   SET_MASK_PLAYER_STATE: (state, mask) => {
@@ -105,5 +75,13 @@ export default {
 
   SET_FORCE_TRANSCODE_RETRY: (state, force) => {
     state.forceTranscodeRetry = force;
+  },
+
+  SET_SHOW_PLAYER: (state, show) => {
+    state.showPlayer = show;
+  },
+
+  SET_IS_PLAYER_EXPANDED: (state, isPlayerExpanded) => {
+    state.isPlayerExpanded = isPlayerExpanded;
   },
 };

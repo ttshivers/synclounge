@@ -2,20 +2,17 @@ import { makeUrl } from '@/utils/fetchutils';
 import { protocolExtension } from '@/utils/streamingprotocols';
 import contenttitleutils from '@/utils/contenttitleutils';
 import { isVideoSupported, isAudioSupported, isContainerSupported } from '@/utils/mediasupport';
-import qualities from './qualities';
 
 const buggyChromeBitrate = 23000;
 
 export default {
-  GET_PLEX_DECISION: (state) => state.plexDecision,
-
   IS_IN_BUGGY_CHROME_STATE: (state, getters, rootState, rootGetters) => (
     rootGetters.GET_BROWSER.name === 'chrome'
       || rootGetters.GET_BROWSER.name === 'edge-chromium')
     && (rootGetters['settings/GET_SLPLAYERQUALITY'] == null
       || rootGetters['settings/GET_SLPLAYERQUALITY'] > buggyChromeBitrate)
     && rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA']
-      ?.Media?.[getters.GET_MEDIA_INDEX]?.bitrate > buggyChromeBitrate,
+      ?.Media?.[state.mediaIndex]?.bitrate > buggyChromeBitrate,
 
   // TODO: Remove this hack when this issue is fixed
   // https://forums.plex.tv/t/plex-skipping-forward-by-a-few-seconds-on-web-player/402112
@@ -45,10 +42,10 @@ export default {
   GET_PART_ID: (state, getters, rootState, rootGetters) => (
     rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA']
       ? rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA']
-        .Media[getters.GET_MEDIA_INDEX].Part[0].id
+        .Media[state.mediaIndex].Part[0].id
       : null),
 
-  GET_DECISION_PART: (state, getters) => getters.GET_PLEX_DECISION?.MediaContainer
+  GET_DECISION_PART: (state) => state.plexDecision?.MediaContainer
     ?.Metadata?.[0]?.Media?.[0].Part?.[0],
 
   IS_DECISION_DIRECT_PLAY: (state, getters) => getters.GET_DECISION_PART?.decision === 'directplay',
@@ -75,7 +72,7 @@ export default {
   GET_TIMELINE_URL: (state, getters) => `${getters.GET_PLEX_SERVER_URL}/:/timeline`,
 
   GET_PART: (state, getters, rootState, rootGetters) => rootGetters[
-    'plexclients/GET_ACTIVE_MEDIA_METADATA']?.Media?.[getters.GET_MEDIA_INDEX]?.Part?.[0],
+    'plexclients/GET_ACTIVE_MEDIA_METADATA']?.Media?.[state.mediaIndex]?.Part?.[0],
 
   GET_STREAMS: (state, getters) => getters.GET_PART?.Stream || [],
 
@@ -162,8 +159,6 @@ export default {
         }),
       ) : []),
 
-  GET_QUALITIES: () => qualities,
-
   GET_AUDIO_STREAM_ID: (state, getters) => {
     const selectedAudioStream = getters.GET_DECISION_STREAMS
       .find((stream) => stream.streamType === '2' && stream.selected === '1');
@@ -176,8 +171,6 @@ export default {
   GET_SUBTITLE_STREAM_ID: (state, getters) => (getters.GET_SUBTITLE_STREAM
     ? parseInt(getters.GET_SUBTITLE_STREAM.id, 10)
     : 0),
-
-  GET_MEDIA_INDEX: (state) => state.mediaIndex,
 
   GET_RELATIVE_THUMB_URL: (state, getters, rootState, rootGetters) => (
     rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA']
@@ -193,10 +186,6 @@ export default {
       height: 200,
     })
     : null),
-
-  GET_OFFSET_MS: (state) => state.offsetMs,
-
-  GET_PLAYER_STATE: (state) => state.playerState,
 
   GET_TITLE: (state, getters, rootState, rootGetters) => (
     rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA']
@@ -222,7 +211,7 @@ export default {
       : base;
   },
 
-  SHOULD_FORCE_BURN_SUBTITLES: (state, getters) => getters.IS_IN_PICTURE_IN_PICTURE,
+  SHOULD_FORCE_BURN_SUBTITLES: (state) => state.isInPictureInPicture,
 
   GET_SUBTITLE_PARAMS: (state, getters) => {
     if (!getters.GET_SELECTED_SUBTITLE_STREAM || getters.CAN_DIRECT_PLAY
@@ -247,7 +236,7 @@ export default {
   GET_DECISION_AND_START_PARAMS: (state, getters, rootState, rootGetters) => ({
     hasMDE: 1,
     path: rootGetters['plexclients/GET_ACTIVE_MEDIA_METADATA'].key,
-    mediaIndex: getters.GET_MEDIA_INDEX,
+    mediaIndex: state.mediaIndex,
     // TODO: investigate multipart file support
     partIndex: 0,
     protocol: getters.GET_STREAMING_PROTOCOL,
@@ -270,54 +259,18 @@ export default {
     session: state.session,
     ...getters.GET_SUBTITLE_PARAMS,
     'Accept-Language': 'en',
-    'X-Plex-Session-Identifier': getters.GET_X_PLEX_SESSION_ID,
+    'X-Plex-Session-Identifier': state.xplexsessionId,
     'X-Plex-Client-Profile-Extra': getters.GET_PLEX_PROFILE_EXTRAS,
     'X-Plex-Incomplete-Segments': 1,
     ...rootGetters['plex/GET_PLEX_BASE_PARAMS'](getters.GET_PLEX_SERVER_ACCESS_TOKEN),
   }),
 
-  ARE_PLAYER_CONTROLS_SHOWN: (state) => state.playerControlsShown,
-
-  GET_X_PLEX_SESSION_ID: (state) => state.xplexsessionId,
-
-  GET_PLEX_TIMELINE_UPDATER_CANCEL_TOKEN: (state) => state.plexTimelineUpdaterCancelToken,
-
-  GET_PLAYER_DESTROY_CANCEL_TOKEN: (state) => state.playerDestroyCancelToken,
-
-  GET_BUFFERING_EVENT_LISTENER: (state) => state.bufferingEventListener,
-
-  GET_CLICK_EVENT_LISTENER: (state) => state.clickEventListener,
-
-  GET_ERROR_EVENT_LISTENER: (state) => state.errorEventListener,
-
-  IS_PLAYER_INITIALIZED: (state) => state.isPlayerInitialized,
-
-  GET_PLAYER_INITIALIZED_DEFERRED_PROMISE: (state) => state.playerInitializedDeferredPromise,
-
-  GET_MASK_PLAYER_STATE: (state) => state.maskPlayerState,
-
-  IS_IN_PICTURE_IN_PICTURE: (state) => state.isInPictureInPicture,
-
-  GET_ORIGINAL_SUBTITLE_RESOLUTION_X_CACHE: (state) => state.originalSubtitleResolutionXCache,
-
-  GET_ORIGINAL_SUBTITLE_RESOLUTION_Y_CACHE: (state) => state.originalSubtitleResolutionYCache,
-
-  GET_SUBTITLE_SIZE: (state) => state.subtitleSize,
-
-  GET_SUBTITLE_POSITION: (state) => state.subtitlePosition,
-
-  GET_SUBTITLE_COLOR: (state) => state.subtitleColor,
-
   IS_USING_NATIVE_SUBTITLES: (state, getters) => getters.GET_SUBTITLE_STREAM_ID
     && !getters.GET_SUBTITLE_STREAM?.burn,
-
-  GET_SUBTITLE_OFFSET: (state) => state.subtitleOffset,
 
   IS_SUBTITLE_STREAM_NATIVE_SIDECAR: (state, getters) => getters.IS_USING_NATIVE_SUBTITLES
    && getters.GET_SUBTITLE_STREAM?.file,
 
-  GET_FORCE_TRANSCODE_RETRY: (state) => state.forceTranscodeRetry,
-
-  GET_FORCE_TRANSCODE: (state, getters, rootState, rootGetters) => getters.GET_FORCE_TRANSCODE_RETRY
+  GET_FORCE_TRANSCODE: (state, getters, rootState, rootGetters) => state.forceTranscodeRetry
     || rootGetters['settings/GET_SLPLAYERFORCETRANSCODE'],
 };

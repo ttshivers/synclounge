@@ -20,7 +20,6 @@ const state = () => ({
 
   snackbarMessage: {},
   snackbarOpen: false,
-  navigateToPlayer: false,
   browser: detect(),
   navigateHome: false,
   isLibraryListView: false,

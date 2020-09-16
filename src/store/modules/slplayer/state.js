@@ -8,15 +8,9 @@ const state = () => ({
   mediaIndex: 0,
   offsetMs: 0,
   playerState: 'stopped',
-  playerControlsShown: false,
-  playerControlsShownInterval: null,
-  bufferingEventListener: null,
-  clickEventListener: null,
-  errorEventListener: null,
   plexTimelineUpdaterCancelToken: null,
   playerDestroyCancelToken: null,
   isPlayerInitialized: false,
-  playerInitializedDeferredPromise: null,
 
   // This is used to signal whether to mask the player state (time, etc) when sending updates
   // before the media is loaded
@@ -33,6 +27,9 @@ const state = () => ({
   subtitleOffset: 0,
   streamingProtocol: 'dash',
   forceTranscodeRetry: false,
+
+  showPlayer: false,
+  isPlayerExpanded: true,
 });
 
 export default state;

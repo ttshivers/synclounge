@@ -18,7 +18,7 @@ export default (store) => {
         ),
 
         store.watch(
-          (state, getters) => getters['slplayer/GET_SUBTITLE_SIZE'],
+          (state) => state.slplayer.subtitleSize,
           this.updateSubtitleSizeSelection.bind(this),
         ),
       ];
@@ -74,7 +74,7 @@ export default (store) => {
           () => SubtitleSizeSelection.onSubtitleSizeClicked(size),
         );
 
-        if (size === store.getters['slplayer/GET_SUBTITLE_SIZE']) {
+        if (size === store.state.slplayer.subtitleSize) {
           button.setAttribute('aria-selected', 'true');
           button.appendChild(checkmarkIcon());
           span.classList.add('shaka-chosen-item');

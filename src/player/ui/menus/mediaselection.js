@@ -17,7 +17,7 @@ export default (store) => {
         ),
 
         store.watch(
-          (state, getters) => getters['slplayer/GET_MEDIA_INDEX'],
+          (state) => state.slplayer.mediaIndex,
           this.updateMediaSelection.bind(this),
         ),
       ];
@@ -72,7 +72,7 @@ export default (store) => {
           () => MediaSelection.onMediaClicked(media.index),
         );
 
-        if (media.index === store.getters['slplayer/GET_MEDIA_INDEX']) {
+        if (media.index === store.state.slplayer.mediaIndex) {
           button.setAttribute('aria-selected', 'true');
           button.appendChild(checkmarkIcon());
           span.classList.add('shaka-chosen-item');
