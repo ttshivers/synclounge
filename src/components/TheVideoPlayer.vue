@@ -4,7 +4,7 @@
   >
     <div
       ref="videoPlayerContainer"
-      v-resize="RERENDER_SUBTITLE_CONTAINER"
+
       class="slplayer contain"
       @click="onPlayerClick"
     >
@@ -50,16 +50,19 @@ import {
 import muxjs from 'mux.js';
 import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 import CAF from 'caf';
-import playerUiPlugins from '@/player/ui';
+import { v4 as uuidv4 } from 'uuid';
 
+import playerUiPlugins from '@/player/ui';
+import { makeUrl, fetchJson } from '@/utils/fetchutils';
+import { protocolExtension } from '@/utils/streamingprotocols';
 import { setOverlay, getOverlay } from '@/player/state';
 import {
   getPlayer, getControlsOffset, setVolume, getSmallPlayButton, getBigPlayButton, areControlsShown,
   isPresentationPaused, getVolume, isBuffering, isPlaying, isPaused, destroy, setCurrentTimeMs,
+  unload, load,
 } from '@/player';
 
 import 'shaka-player/dist/controls.css';
-import 'synclounge-libjass/lib/libjass.css';
 
 window.muxjs = muxjs;
 shaka.log.setLevel(shaka.log.Level.ERROR);
@@ -77,6 +80,11 @@ export default {
   computed: {
     ...mapGetters('slplayer', [
       'IS_USING_NATIVE_SUBTITLES',
+      'GET_FORCE_TRANSCODE',
+      'GET_DECISION_PART',
+      'GET_STREAMING_PROTOCOL',
+      'GET_PLEX_SERVER_URL',
+      'GET_DECISION_AND_START_PARAMS',
     ]),
 
     ...mapGetters('synclounge', [
@@ -101,6 +109,7 @@ export default {
       'playerState',
       'playerDestroyCancelToken',
       'isPlayerExpanded',
+      'offsetMs',
     ]),
 
     playerConfig() {
@@ -125,8 +134,34 @@ export default {
         && this.videoTimeStamp >= this.GET_ACTIVE_MEDIA_METADATA_INTRO_MARKER.startTimeOffset
         && this.videoTimeStamp < this.GET_ACTIVE_MEDIA_METADATA_INTRO_MARKER.endTimeOffset;
     },
+
+    isDecisionDirectPlay() {
+      return this.GET_DECISION_PART?.decision === 'directplay';
+    },
+
+    srcPath() {
+      return this.isDecisionDirectPlay
+        ? this.GET_DECISION_PART?.key
+        : `/video/:/transcode/universal/start.${protocolExtension[this.GET_STREAMING_PROTOCOL]}`;
+    },
+
+    srcUrl() {
+      return makeUrl(
+        `${this.GET_PLEX_SERVER_URL}${this.srcPath}`,
+        this.GET_DECISION_AND_START_PARAMS,
+      );
+    },
+
+    decisionUrl() {
+      return makeUrl(
+        `${this.GET_PLEX_SERVER_URL}/video/:/transcode/universal/decision`,
+        this.GET_DECISION_AND_START_PARAMS,
+      );
+    },
   },
 
+  // Note: watchers can start being called after create lifecycle event and before mounted, so we
+  // must block some events until the player is mounted
   watch: {
     playerState: {
       async handler() {
@@ -147,18 +182,14 @@ export default {
     },
 
     GET_ACTIVE_MEDIA_METADATA: {
-      async handler(newMetadata) {
-        // This handles regular plex clients (nonslplayer) playback changes
-        if (newMetadata) {
-          await this.SET_MEDIA_AS_BACKGROUND(newMetadata);
-        }
+      handler() {
+        this.onMetadataChange();
       },
-      immediate: true,
     },
 
-    playerControlsShownInterval() {
-      return this.RERENDER_SUBTITLE_CONTAINER();
-    },
+    // playerControlsShownInterval() {
+    //   return this.RERENDER_SUBTITLE_CONTAINER();
+    // },
 
     isInIntro: {
       handler() {
@@ -168,7 +199,6 @@ export default {
 
     GET_AUTO_SKIP_INTRO: {
       handler() {
-        console.log('watcher');
         return this.checkAutoSkipIntro();
       },
     },
@@ -176,6 +206,24 @@ export default {
     isPlayerExpanded: {
       handler(isPlayerExpanded) {
         getOverlay().setEnabled(isPlayerExpanded);
+
+        // This is here to make shaka overlay update it's state. Otherwise, if you minimize the
+        // player while its still buffering and then maximize it after it's done buffering, the
+        // buffering circle will still be there since the controls are disabled when the player is
+        // minimized.
+        getOverlay().getControls().loadComplete();
+      },
+    },
+
+    srcUrl: {
+      handler() {
+        return this.loadPlayerSrc();
+      },
+    },
+
+    decisionUrl: {
+      handler() {
+        return this.sendPlexDecisionRequest();
       },
     },
   },
@@ -207,22 +255,17 @@ export default {
     this.SET_PLAYER_DESTROY_CANCEL_TOKEN(new CAF.cancelToken());
     this.SET_IS_PLAYER_INITIALIZED(true);
 
-    try {
-      this.CHANGE_PLAYER_SRC();
+    // Since we blocked watchers while we were initializing the player, let's call the ones we need
+    this.onMetadataChange();
 
-      // Purposefully not awaited
-      this.START_PERIODIC_PLEX_TIMELINE_UPDATE();
-    } catch (e) {
-      // TODO: stuff
-      console.error(e);
-    }
+    // Purposefully not awaited
+    this.START_PERIODIC_PLEX_TIMELINE_UPDATE();
   },
 
   async beforeDestroy() {
     this.removePlayerEventListeners();
     this.stopPlayerControlsShownInterval();
     this.SET_IS_IN_PICTURE_IN_PICTURE(false);
-    this.DESTROY_PLAYER_STATE();
 
     this.playerDestroyCancelToken.abort();
     this.SET_PLAYER_DESTROY_CANCEL_TOKEN(null);
@@ -233,38 +276,26 @@ export default {
     this.SET_IS_PLAYER_INITIALIZED(false);
 
     this.SET_OFFSET_MS(0);
-    this.SET_SUBTITLE_OFFSET(0);
 
     await Promise.all([
-      this.DESTROY_SUBTITLES(),
       destroy(),
       this.PROCESS_MEDIA_UPDATE(),
     ]);
   },
 
   methods: {
-    ...mapActions('plexservers', [
-      'SET_MEDIA_AS_BACKGROUND',
-    ]),
-
     ...mapActions('slplayer', [
       'CHANGE_MEDIA_INDEX',
-      'CHANGE_PLAYER_SRC',
 
       'PRESS_STOP',
-      'DESTROY_PLAYER_STATE',
       'PLAY_PAUSE_VIDEO',
       'SEND_PARTY_PLAY_PAUSE',
       'SKIP_INTRO',
-      'RERENDER_SUBTITLE_CONTAINER',
       'PROCESS_STATE_UPDATE_ON_PLAYER_EVENT',
       'UPDATE_PLAYER_SRC_AND_KEEP_TIME',
-      'CHANGE_SUBTITLES',
-      'DESTROY_ASS',
       'SEND_PLEX_TIMELINE_UPDATE',
       'START_PERIODIC_PLEX_TIMELINE_UPDATE',
       'CANCEL_PERIODIC_PLEX_TIMELINE_UPDATE',
-      'DESTROY_SUBTITLES',
     ]),
 
     ...mapActions('synclounge', [
@@ -294,7 +325,9 @@ export default {
       'SET_IS_PLAYER_INITIALIZED',
       'SET_FORCE_TRANSCODE_RETRY',
       'SET_OFFSET_MS',
-      'SET_SUBTITLE_OFFSET',
+      'SET_SESSION',
+      'SET_MASK_PLAYER_STATE',
+      'SET_PLEX_DECISION',
     ]),
 
     addPlayerEventListeners() {
@@ -436,13 +469,13 @@ export default {
 
     async onSeeking() {
       console.debug('onSeeking');
-      await this.DESTROY_ASS();
+      // await this.DESTROY_ASS();
     },
 
     async onSeeked() {
       console.debug('onSeeked');
       // TODO: only change if streaming subs
-      await this.CHANGE_SUBTITLES();
+      // await this.changeSubtitles();
     },
 
     onBuffering({ buffering }) {
@@ -488,6 +521,55 @@ export default {
 
       this.SET_OFFSET_MS(endTimeOffset);
       setCurrentTimeMs(endTimeOffset);
+    },
+
+    async loadPlayerSrc() {
+    // TODO: potentailly unload if already loaded to avoid load interrupted errors
+    // However, while its loading, potentially   reporting the old time...
+      await unload();
+      await load(this.srcUrl);
+
+      if (this.offsetMs > 0) {
+        setCurrentTimeMs(this.offsetMs);
+      }
+    },
+
+    async sendPlexDecisionRequest() {
+      console.debug('sendPlexDecisionRequest');
+      const data = await fetchJson(this.decisionUrl);
+      this.SET_PLEX_DECISION(data);
+      // TODO: subtitle offset stuff
+    },
+
+    onMetadataChange() {
+      console.debug('onMetadataChange');
+
+      // Abort subtitle requests now or else we get ugly errors from the server closing it.
+      // await this.DESTROY_ASS();
+
+      this.SET_FORCE_TRANSCODE_RETRY(false);
+
+      this.SET_SESSION(uuidv4());
+
+      // try {
+      //   await this.sendPlexDecisionRequest();
+      // } catch (e) {
+      //   if (this.GET_FORCE_TRANSCODE) {
+      //     throw e;
+      //   }
+      //   console.warn('Error loading stream from plex. Retrying with forced transcoding', e);
+
+      //   // Try again with forced transcoding
+      //   this.SET_FORCE_TRANSCODE_RETRY(true);
+      //   await this.sendPlexDecisionRequest();
+      // }
+
+      // TODO: make reactive
+      // await this.changeSubtitles();
+
+      // TODO: potentially avoid sending updates on media change since we already do that
+
+      this.SET_MASK_PLAYER_STATE(false);
     },
   },
 };
@@ -576,13 +658,5 @@ export default {
 
   .shaka-spinner {
     padding: 57px !important;
-  }
-
-  .libjass-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
   }
 </style>

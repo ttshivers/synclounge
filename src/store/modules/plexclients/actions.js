@@ -67,7 +67,7 @@ export default {
   },
 
   PLAY_MEDIA: async ({
-    getters, commit, dispatch, rootGetters, rootState,
+    getters, commit, dispatch, rootGetters,
   }, {
     mediaIndex, offset, metadata, machineIdentifier, userInitiated,
   }) => {
@@ -91,11 +91,7 @@ export default {
       commit('slplayer/SET_MASK_PLAYER_STATE', true, { root: true });
       await dispatch('synclounge/PROCESS_MEDIA_UPDATE', userInitiated, { root: true });
 
-      if (rootState.slplayer.isPlayerInitialized) {
-        await dispatch('slplayer/CHANGE_PLAYER_SRC', true, { root: true });
-      } else {
-        commit('slplayer/SET_SHOW_PLAYER', true, { root: true });
-      }
+      commit('slplayer/SET_SHOW_PLAYER', true, { root: true });
     } else {
       // Play a media item given a mediaId key and a server to play from
       // We need the following variables to build our paramaters:

@@ -1,5 +1,3 @@
-import { makeUrl } from '@/utils/fetchutils';
-import { protocolExtension } from '@/utils/streamingprotocols';
 import contenttitleutils from '@/utils/contenttitleutils';
 import { isVideoSupported, isAudioSupported, isContainerSupported } from '@/utils/mediasupport';
 
@@ -47,24 +45,6 @@ export default {
 
   GET_DECISION_PART: (state) => state.plexDecision?.MediaContainer
     ?.Metadata?.[0]?.Media?.[0].Part?.[0],
-
-  IS_DECISION_DIRECT_PLAY: (state, getters) => getters.GET_DECISION_PART?.decision === 'directplay',
-
-  GET_SRC_PATH: (state, getters) => (getters.IS_DECISION_DIRECT_PLAY
-    ? getters.GET_DECISION_PART?.key
-    : `/video/:/transcode/universal/start.${protocolExtension[getters.GET_STREAMING_PROTOCOL]}`),
-
-  GET_SRC_URL: (state, getters) => makeUrl(
-    `${getters.GET_PLEX_SERVER_URL}${getters.GET_SRC_PATH}`,
-    getters.GET_DECISION_AND_START_PARAMS,
-  ),
-
-  GET_SUBTITLE_BASE_URL: (state, getters) => (getters.CAN_DIRECT_PLAY_SUBTITLES
-    ? `${getters.GET_PLEX_SERVER_URL}${getters.GET_SUBTITLE_STREAM.key}`
-    : `${getters.GET_PLEX_SERVER_URL}/video/:/transcode/universal/subtitles`),
-
-  GET_DECISION_URL: (state, getters) => `${getters.GET_PLEX_SERVER_URL
-  }/video/:/transcode/universal/decision`,
 
   GET_PART_URL: (state, getters) => `${getters.GET_PLEX_SERVER_URL
   }/library/parts/${getters.GET_PART_ID}`,

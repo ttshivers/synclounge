@@ -1,11 +1,10 @@
 import CAF from 'caf';
 
-import { v4 as uuidv4 } from 'uuid';
-import { fetchJson, queryFetch } from '@/utils/fetchutils';
+import { queryFetch } from '@/utils/fetchutils';
 import {
   play, pause, getDurationMs, getCurrentTimeMs, isTimeInBufferedRange, isPresentationPaused,
-  waitForMediaElementEvent, cancelTrickPlay, load, setPlaybackRate, getPlaybackRate,
-  setCurrentTimeMs, unload, getVideoOptional,
+  waitForMediaElementEvent, cancelTrickPlay, setPlaybackRate, getPlaybackRate,
+  setCurrentTimeMs, getVideoOptional,
 } from '@/player';
 import subtitleActions from './subtitleActions';
 
@@ -30,15 +29,9 @@ export default {
       ? offsetMs
       : getCurrentTimeMs() || offsetMs),
 
-  SEND_PLEX_DECISION_REQUEST: async ({ getters, commit }) => {
-    const data = await fetchJson(getters.GET_DECISION_URL, getters.GET_DECISION_AND_START_PARAMS);
-    commit('SET_PLEX_DECISION', data);
-    commit('SET_SUBTITLE_OFFSET', parseInt(getters.GET_SUBTITLE_STREAM?.offset || 0, 10));
-  },
-
   CHANGE_MAX_VIDEO_BITRATE: async ({ commit, dispatch }, bitrate) => {
     commit('settings/SET_SLPLAYERQUALITY', bitrate, { root: true });
-    await dispatch('UPDATE_PLAYER_SRC_AND_KEEP_TIME');
+    await dispatch('RELOAD_METADATA');
   },
 
   CHANGE_AUDIO_STREAM: async ({ getters, dispatch }, audioStreamID) => {
@@ -47,10 +40,7 @@ export default {
       ...getters.GET_PART_PARAMS,
     }, { method: 'PUT' });
 
-    await dispatch('plexclients/RELOAD_ACTIVE_MEDIA_METADATA', null, { root: true });
-
-    // Redo src
-    await dispatch('UPDATE_PLAYER_SRC_AND_KEEP_TIME');
+    await dispatch('RELOAD_METADATA');
   },
 
   CHANGE_SUBTITLE_STREAM: async ({ getters, dispatch }, subtitleStreamID) => {
@@ -59,66 +49,18 @@ export default {
       ...getters.GET_PART_PARAMS,
     }, { method: 'PUT' });
 
-    await dispatch('plexclients/RELOAD_ACTIVE_MEDIA_METADATA', null, { root: true });
-
-    // Redo src
-    await dispatch('UPDATE_PLAYER_SRC_AND_KEEP_TIME');
+    await dispatch('RELOAD_METADATA');
   },
 
   CHANGE_MEDIA_INDEX: async ({ commit, dispatch }, index) => {
     commit('SET_MEDIA_INDEX', index);
-    await dispatch('UPDATE_PLAYER_SRC_AND_KEEP_TIME');
+    await dispatch('RELOAD_METADATA');
   },
 
   // Changes the player src to the new one and restores the time afterwards
-  UPDATE_PLAYER_SRC_AND_KEEP_TIME: async ({ commit, dispatch }) => {
+  RELOAD_METADATA: async ({ commit, dispatch }) => {
     commit('SET_OFFSET_MS', await dispatch('FETCH_PLAYER_CURRENT_TIME_MS_OR_FALLBACK'));
-    await dispatch('CHANGE_PLAYER_SRC');
-  },
-
-  CHANGE_SUBTITLES: async ({ getters, dispatch }) => {
-    if (getters.IS_USING_NATIVE_SUBTITLES) {
-      await dispatch('SET_SUBTITLE_URL');
-    } else {
-      await dispatch('DESTROY_ASS');
-    }
-  },
-
-  CHANGE_PLAYER_SRC: async ({
-    state: { maskPlayerState, forceTranscodeRetry }, getters, commit, dispatch,
-  }) => {
-    console.debug('CHANGE_PLAYER_SRC');
-
-    // Abort subtitle requests now or else we get ugly errors from the server closing it.
-    await dispatch('DESTROY_ASS');
-
-    if (forceTranscodeRetry) {
-      commit('SET_FORCE_TRANSCODE_RETRY', false);
-    }
-
-    commit('SET_SESSION', uuidv4());
-
-    try {
-      await dispatch('SEND_PLEX_DECISION_REQUEST');
-      await dispatch('LOAD_PLAYER_SRC');
-    } catch (e) {
-      if (getters.GET_FORCE_TRANSCODE) {
-        throw e;
-      }
-      console.warn('Error loading stream from plex. Retrying with forced transcoding', e);
-
-      // Try again with forced transcoding
-      commit('SET_FORCE_TRANSCODE_RETRY', true);
-      await dispatch('SEND_PLEX_DECISION_REQUEST');
-      await dispatch('LOAD_PLAYER_SRC');
-    }
-
-    await dispatch('CHANGE_SUBTITLES');
-
-    // TODO: potentially avoid sending updates on media change since we already do that
-    if (maskPlayerState) {
-      commit('SET_MASK_PLAYER_STATE', false);
-    }
+    await dispatch('plexclients/RELOAD_ACTIVE_MEDIA_METADATA', null, { root: true });
   },
 
   SEND_PLEX_TIMELINE_UPDATE: async ({ getters, dispatch },
@@ -290,17 +232,6 @@ export default {
     await plexTimelineUpdatePromise;
   },
 
-  LOAD_PLAYER_SRC: async ({ state: { offsetMs }, getters }) => {
-    // TODO: potentailly unload if already loaded to avoid load interrupted errors
-    // However, while its loading, potentially   reporting the old time...
-    await unload();
-    await load(getters.GET_SRC_URL);
-
-    if (offsetMs > 0) {
-      setCurrentTimeMs(offsetMs);
-    }
-  },
-
   CANCEL_PERIODIC_PLEX_TIMELINE_UPDATE: ({ state: { plexTimelineUpdaterCancelToken }, commit }) => {
     if (plexTimelineUpdaterCancelToken) {
       plexTimelineUpdaterCancelToken.abort();
@@ -350,8 +281,6 @@ export default {
       rootGetters['plexclients/GET_ACTIVE_PLAY_QUEUE_SELECTED_ITEM'].viewOffset || 0);
     commit('SET_MASK_PLAYER_STATE', true);
     await dispatch('synclounge/PROCESS_MEDIA_UPDATE', true, { root: true });
-
-    await dispatch('CHANGE_PLAYER_SRC');
 
     // Purposefully not awaited
     dispatch('START_PERIODIC_PLEX_TIMELINE_UPDATE');

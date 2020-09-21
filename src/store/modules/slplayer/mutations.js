@@ -45,14 +45,6 @@ export default {
     state.isInPictureInPicture = isIn;
   },
 
-  SET_ORIGINAL_SUBTITLE_RESOLUTION_X_CACHE: (state, resolution) => {
-    state.originalSubtitleResolutionXCache = resolution;
-  },
-
-  SET_ORIGINAL_SUBTITLE_RESOLUTION_Y_CACHE: (state, resolution) => {
-    state.originalSubtitleResolutionYCache = resolution;
-  },
-
   SET_SUBTITLE_SIZE: (state, size) => {
     state.subtitleSize = size;
   },
@@ -63,10 +55,6 @@ export default {
 
   SET_SUBTITLE_COLOR: (state, color) => {
     state.subtitleColor = color;
-  },
-
-  SET_SUBTITLE_OFFSET: (state, offset) => {
-    state.subtitleOffset = offset;
   },
 
   SET_STREAMING_PROTOCOL: (state, protocol) => {

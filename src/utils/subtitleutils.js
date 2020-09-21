@@ -1,7 +1,3 @@
-export const subtitleSettings = {
-  preciseOutlines: true,
-};
-
 export const subtitlePositions = {
   Top: 8,
   Middle: 5,
@@ -49,16 +45,3 @@ export const getBestOutlineColor = ({ red, green, blue }) => (
   relativeLuminanceW3C(red, green, blue) > 0.179
     ? subtitleColors.Black
     : subtitleColors.White);
-
-export const hexToLibjassColor = async (hex) => {
-  const libjass = await import('synclounge-libjass');
-
-  const aRgbHex = hex.match(/.{1,2}/g);
-
-  return new libjass.parts.Color(
-    parseInt(aRgbHex[0], 16),
-    parseInt(aRgbHex[1], 16),
-    parseInt(aRgbHex[2], 16),
-    1,
-  );
-};

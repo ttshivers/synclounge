@@ -17,14 +17,9 @@ const state = () => ({
   maskPlayerState: false,
   isInPictureInPicture: false,
 
-  // Subtitle state
-  originalSubtitleResolutionXCache: null,
-  originalSubtitleResolutionYCache: null,
-
   subtitleSize: subtitleSizes.Normal,
   subtitlePosition: subtitlePositions.Bottom,
   subtitleColor: subtitleColors.White,
-  subtitleOffset: 0,
   streamingProtocol: 'dash',
   forceTranscodeRetry: false,
 

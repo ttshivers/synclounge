@@ -4,6 +4,7 @@
     class="player-container"
   >
     <div :class="expandedClass">
+      <TheVideoPlayerSubtitles v-if="IS_USING_NATIVE_SUBTITLES" />
       <TheVideoPlayer />
       <v-fade-transition v-if="!isPlayerExpanded">
         <v-overlay
@@ -26,16 +27,21 @@
 </template>
 
 <script>
-import { mapMutations, mapState } from 'vuex';
+import { mapGetters, mapMutations, mapState } from 'vuex';
 
 export default {
   name: 'TheVideoPlayerContainer',
 
   components: {
     TheVideoPlayer: () => import('@/components/TheVideoPlayer.vue'),
+    TheVideoPlayerSubtitles: () => import('@/components/TheVideoPlayerSubtitles.vue'),
   },
 
   computed: {
+    ...mapGetters('slplayer', [
+      'IS_USING_NATIVE_SUBTITLES',
+    ]),
+
     ...mapState('slplayer', [
       'isPlayerExpanded',
     ]),

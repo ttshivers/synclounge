@@ -102,15 +102,6 @@ export const getDimensions = () => {
   };
 };
 
-export const insertElementBeforeVideo = (element) => {
-  const { parentNode } = getVideo();
-
-  parentNode.insertBefore(
-    element,
-    getVideo(),
-  );
-};
-
 export const destroy = async () => {
   const savedOverlay = getOverlay();
   setOverlay(null);
