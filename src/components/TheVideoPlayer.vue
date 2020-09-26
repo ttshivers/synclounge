@@ -75,6 +75,8 @@ export default {
     playerControlsShownInterval: null,
     arePlayControlsShown: false,
     videoTimeStamp: 0,
+    abortController: null,
+    isPlayerUnloading: false,
   }),
 
   computed: {
@@ -215,15 +217,9 @@ export default {
       },
     },
 
-    srcUrl: {
-      handler() {
-        return this.loadPlayerSrc();
-      },
-    },
-
     decisionUrl: {
       handler() {
-        return this.sendPlexDecisionRequest();
+        return this.initializeStream();
       },
     },
   },
@@ -526,7 +522,6 @@ export default {
     async loadPlayerSrc() {
     // TODO: potentailly unload if already loaded to avoid load interrupted errors
     // However, while its loading, potentially   reporting the old time...
-      await unload();
       await load(this.srcUrl);
 
       if (this.offsetMs > 0) {
@@ -534,9 +529,9 @@ export default {
       }
     },
 
-    async sendPlexDecisionRequest() {
+    async sendPlexDecisionRequest(signal) {
       console.debug('sendPlexDecisionRequest');
-      const data = await fetchJson(this.decisionUrl);
+      const data = await fetchJson(this.decisionUrl, null, { signal });
       this.SET_PLEX_DECISION(data);
       // TODO: subtitle offset stuff
     },
@@ -544,32 +539,47 @@ export default {
     onMetadataChange() {
       console.debug('onMetadataChange');
 
-      // Abort subtitle requests now or else we get ugly errors from the server closing it.
-      // await this.DESTROY_ASS();
-
       this.SET_FORCE_TRANSCODE_RETRY(false);
-
       this.SET_SESSION(uuidv4());
-
-      // try {
-      //   await this.sendPlexDecisionRequest();
-      // } catch (e) {
-      //   if (this.GET_FORCE_TRANSCODE) {
-      //     throw e;
-      //   }
-      //   console.warn('Error loading stream from plex. Retrying with forced transcoding', e);
-
-      //   // Try again with forced transcoding
-      //   this.SET_FORCE_TRANSCODE_RETRY(true);
-      //   await this.sendPlexDecisionRequest();
-      // }
-
-      // TODO: make reactive
-      // await this.changeSubtitles();
-
-      // TODO: potentially avoid sending updates on media change since we already do that
-
       this.SET_MASK_PLAYER_STATE(false);
+    },
+
+    async abortRequests() {
+      if (this.abortController) {
+      // Cancel outstanding request
+        this.abortController.abort();
+        this.abortController = null;
+        await unload();
+      }
+    },
+
+    async initializeStreamCriticalSection(signal) {
+      await this.sendPlexDecisionRequest(signal);
+      await this.loadPlayerSrc();
+    },
+
+    async initializeStream() {
+      if (this.isPlayerUnloading) {
+      // Since unloading is async, it's possible for initializeStream to be entered multiple times
+      // before unloading finishes. Shaka doesn't allow unload to be called while it's unloading, so
+      // just return early if it is. It's okay to do that since once it's done unloading, the load
+      // methods will pick up the new data.
+        return;
+      }
+
+      this.isPlayerUnloading = true;
+      await this.abortRequests();
+      this.isPlayerUnloading = false;
+
+      const controller = new AbortController();
+      this.abortController = controller;
+      try {
+        await this.initializeStreamCriticalSection(controller.signal);
+      } catch (e) {
+        if (!controller.signal.aborted) {
+          throw e;
+        }
+      }
     },
   },
 };

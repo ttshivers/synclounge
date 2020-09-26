@@ -1,5 +1,3 @@
-const videoClock = null;
-
 export default {
   CHANGE_SUBTITLE_COLOR: async ({ commit, dispatch }, color) => {
     commit('SET_SUBTITLE_COLOR', color);
@@ -30,7 +28,7 @@ export default {
     }
 
     // eslint-disable-next-line no-underscore-dangle
-    videoClock._autoClock.seeking();
+    // videoClock._autoClock.seeking();
 
     // TODO: give this a signal
     await dispatch('plexservers/UPDATE_STREAM', {

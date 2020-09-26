@@ -221,17 +221,6 @@ export default {
     }
   },
 
-  CHANGE_PLAYER_STATE: async ({ commit, dispatch }, state) => {
-    console.debug('CHANGE_PLAYER_STATE', state);
-    commit('SET_PLAYER_STATE', state);
-    const plexTimelineUpdatePromise = dispatch('SEND_PLEX_TIMELINE_UPDATE');
-    if (state !== 'stopped') {
-      await dispatch('synclounge/PROCESS_PLAYER_STATE_UPDATE', null, { root: true });
-    }
-
-    await plexTimelineUpdatePromise;
-  },
-
   CANCEL_PERIODIC_PLEX_TIMELINE_UPDATE: ({ state: { plexTimelineUpdaterCancelToken }, commit }) => {
     if (plexTimelineUpdaterCancelToken) {
       plexTimelineUpdaterCancelToken.abort();
