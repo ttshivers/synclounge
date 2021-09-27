@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: Recreate tag
-        uses: actions/github-script@v3.0.0
+        uses: actions/github-script@v5
         with:
           script: |
             const tag = 'tags/${{ matrix.tag }}';
@@ -146,7 +146,7 @@ jobs:
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: Get platforms
-        uses: actions/github-script@v3.0.0
+        uses: actions/github-script@v5
         id: platforms
         env:
           DOCKER_CLI_EXPERIMENTAL: enabled
